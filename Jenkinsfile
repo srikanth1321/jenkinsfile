@@ -15,7 +15,7 @@ pipeline {
 
                 script {
 
-                    git 'https://github.com/dstar55/docker-hello-world-spring-boot.git';
+                    git 'https://github.com/srikanthrdy/jenkinsfile.git';
 
                 }
 
