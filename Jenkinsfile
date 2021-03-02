@@ -1,59 +1,88 @@
-node {
-    // reference to maven
-    // ** NOTE: This 'maven-3.6.1' Maven tool must be configured in the Jenkins Global Configuration.   
-    def mvnHome = tool 'maven-3.6.1'
+pipeline {
 
-    // holds reference to docker image
-    def dockerImage
-    // ip address of the docker private repository(nexus)
+    agent {
+        
+        label "master"
+    }
+    tools{
+        maven "Maven"
+    }
+    stages {
+
+        stage("Git Clone") {
+
+            steps {
+
+                script {
+
+                    git 'https://github.com/dstar55/docker-hello-world-spring-boot.git';
+
+                }
+
+            }
+
+        }
+
+        stage("Maven Build") {
+            
+            steps {
+
+                script {
+                withMaven(jdk: 'JAVA_HOME', maven: 'Maven',mavenSettingsFilePath: '/home/srikanth/.m2/settings.xml') {
+                sh "mvn package -DskipTests=true"
+                }
+                }
+
+            }
+
+        }
+        stage("Sonar-scan") {
+            steps {
+                script {
+                    
+                    sh "mvn sonar:sonar -Dsonar.login=admin -Dsonar.password=Rajini@123"
+                }
+
+                }
+            }
+        
+        stage('Build Docker Image') {
+            steps {
+                
+                script {
+      sh "docker build -t hello-world-java:${BUILD_NUMBER} ."
     
-    def dockerRepoUrl = "localhost:8083"
-    def dockerImageName = "hello-world-java"
-    def dockerImageTag = "${dockerRepoUrl}/${dockerImageName}:${env.BUILD_NUMBER}"
-    
-    stage('Clone Repo') { // for display purposes
-      // Get some code from a GitHub repository
-      git 'https://github.com/dstar55/docker-hello-world-spring-boot.git'
-      // Get the Maven tool.
-      // ** NOTE: This 'maven-3.6.1' Maven tool must be configured
-      // **       in the global configuration.           
-      mvnHome = tool 'maven-3.6.1'
-    }    
-  
-    stage('Build Project') {
-      // build project via maven
-      sh "'${mvnHome}/bin/mvn' -Dmaven.test.failure.ignore clean package"
-    }
-	
-	stage('Publish Tests Results'){
-      parallel(
-        publishJunitTestsResultsToJenkins: {
-          echo "Publish junit Tests Results"
-		  junit '**/target/surefire-reports/TEST-*.xml'
-		  archive 'target/*.jar'
-        },
-        publishJunitTestsResultsToSonar: {
-          echo "This is branch b"
-      })
-    }
-		
-    stage('Build Docker Image') {
-      // build docker image
-      sh "whoami"
-      sh "ls -all /var/run/docker.sock"
-      sh "mv ./target/hello*.jar ./data" 
-      
-      dockerImage = docker.build("hello-world-java")
-    }
-   
+            }
+        }
+        }
+        
+        
     stage('Deploy Docker Image'){
-      
-      // deploy docker image to nexus
+        steps{
+            
+            script{
+                
 
-      echo "Docker Image Tag Name: ${dockerImageTag}"
-
-      sh "docker login -u admin -p admin123 ${dockerRepoUrl}"
-      sh "docker tag ${dockerImageName} ${dockerImageTag}"
-      sh "docker push ${dockerImageTag}"
+      sh "docker login -u admin -p Rajini@123 localhost:11004"
+      sh "docker tag hello-world-java:${BUILD_NUMBER} localhost:11004/hello-world-java:${BUILD_NUMBER}"
+      sh "docker push localhost:11004/hello-world-java:${BUILD_NUMBER}"
+            }
+        }
+    }
+    stage("Docker Run") {
+        steps {
+            
+        script {
+            
+            sh "docker pull localhost:11004/hello-world-java:${BUILD_NUMBER}"
+            sh "docker stop hello"
+            sh "docker rm hello"
+            sh "docker run -d -p 1178:8080 --name=hello localhost:11004/hello-world-java:${BUILD_NUMBER}"
+            sh "sleep 10s"
+            sh "docker ps"
+        }
+    }
+    }    
+    
     }
 }
