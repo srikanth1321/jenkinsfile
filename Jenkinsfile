@@ -57,32 +57,5 @@ pipeline {
         }
         
         
-    stage('Deploy Docker Image'){
-        steps{
-            
-            script{
-                
-
-      sh "docker login -u admin -p Rajini@123 localhost:11004"
-      sh "docker tag hello-world-java:${BUILD_NUMBER} localhost:11004/hello-world-java:${BUILD_NUMBER}"
-      sh "docker push localhost:11004/hello-world-java:${BUILD_NUMBER}"
-            }
-        }
-    }
-    stage("Docker Run") {
-        steps {
-            
-        script {
-            
-            sh "docker pull localhost:11004/hello-world-java:${BUILD_NUMBER}"
-            sh "docker stop hello"
-            sh "docker rm hello"
-            sh "docker run -d -p 1178:8080 --name=hello localhost:11004/hello-world-java:${BUILD_NUMBER}"
-            sh "sleep 10s"
-            sh "docker ps"
-        }
-    }
-    }    
-    
     }
 }
